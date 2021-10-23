@@ -5,7 +5,10 @@ import urllib.request
 import fitz
 from datetime import datetime
 
-def get_pages():
+WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+
+def get_rooms():
+    """Downloads the Raumplan.pdf and parses it into a neatly organized dictionary."""
     if (os.path.isfile("Raumplan.pdf")):
         os.remove("Raumplan.pdf")
 
@@ -17,37 +20,68 @@ def get_pages():
             pages.append(page.get_text())
 
     os.remove("Raumplan.pdf")
-    return pages
 
-def get_availability(room, day=None):
-    room = room.upper()
-    day_display = "heute"
-    if day is None:
-        day = datetime.today().strftime('%d.%m.%Y')
-    else:
-        if len(day) == 10:
-            day = day[:-4]+day[-2:]
-        day_display = "am {}".format(day)
-
-    pages = get_pages()
     rooms = {}
     for page in pages:
         lines = page.split("\n")
-        
-        if room == lines[0].split()[0]:
-            if day not in page:
-                result = "Der Raum **{}** ist {} nicht belegt.".format(room, day_display)
-                return result, None
-            else:
-                result = "Der Raum **{}** ist {} zu folgenden Uhrzeiten belegt:".format(room, day_display)
-                times = {}
-                for index, line in enumerate(lines):
-                    if day in line:
-                        start = line.split()[1]
-                        end = lines[index+1][2:]
-                        event = lines[index+2]
-                        times["{} bis {}".format(start, end)] = event
+        room = lines[0].split()[0]
+
+        # The first six lines are the room and table heading
+        event_lines = lines[6:]
+        events = {}
+        for index, line in enumerate(event_lines):
+            if line in WEEKDAYS:
+                date, start = event_lines[index+1].split()
+                end = event_lines[index+2][2:]
+                name = event_lines[index+3]
                 
-                return result, times
-    
-    return "Der Raum **{}** konnte nicht im Raumplan gefunden werden.".format(room), None
+                # Some names are not properly separated ('xx-xx-xxxx-xx<name>' instead of 'xx-xx-xxxx-xx <name>')
+                if len(name) > 13 and name[13] != "":
+                    name = name[:13] + " " + name[13:]
+
+                if date not in events:
+                    events[date] = []
+
+                events[date].append({
+                    "name": name,
+                    "start": start,
+                    "end": end,
+                })
+        
+        rooms[room] = events
+
+    return rooms
+
+def get_availability(room, date=None):
+    room = room.upper()
+    if date is None:
+        date_display = "heute"
+        date = datetime.today().strftime('%d.%m.%Y')
+        # DD.MM.YYYY -> DD.MM.YY
+        date = date[:-4] + date[-2:]
+    else:
+        parts = date.split(".")
+        if len(parts) != 3:
+            return "Ungültiges Datum angegeben. Bitte nutze das Format DD.MM.YY", None
+
+        day, month, year = parts
+        if len(day) == 1:
+            day = "0" + day
+        if len(month) == 1:
+            month = "0" + month
+        if len(year) == 4:
+            year = year[2:]
+
+        date = "{}.{}.{}".format(day, month, year)
+        date_display = "am {}".format(date)
+
+    # TODO cache?
+    rooms = get_rooms()
+    if room not in rooms.keys():
+        return "Der Raum **{}** konnte nicht im Raumplan gefunden werden.".format(room), None
+
+    if date in rooms.get(room).keys():
+        print(rooms.get(room).get(date))
+        return "Der Raum **{}** ist {} zu folgenden Uhrzeiten belegt:".format(room, date_display), rooms.get(room).get(date)
+    else:
+        return "Der Raum **{}** ist {} nicht belegt.".format(room, date_display), None

@@ -25,14 +25,14 @@ async def on_message(message):
 
         room = parts[1]
         if len(parts) < 3:
-            result, times = raumcheck.get_availability(room)
+            result, events = raumcheck.get_availability(room)
         else:
-            result, times = raumcheck.get_availability(room, day=parts[2])
+            result, events = raumcheck.get_availability(room, date=parts[2])
         
         embed = discord.Embed(description=result)
-        if times is not None:
-            for name, value in times.items():
-                embed.add_field(name=name, value=value, inline=False)
+        if events is not None:
+            for event in events:
+                embed.add_field(name="{} bis {}".format(event["start"], event["end"]), value=event["name"], inline=False)
         
         embed.set_footer(text="Angaben ohne Gewähr")
         await message.channel.send(embed=embed)
