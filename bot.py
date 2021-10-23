@@ -20,21 +20,25 @@ async def on_message(message):
 
     if client.user.mentioned_in(message) and message.mention_everyone is False:
         print("{}: {}".format(message.author, message.content))
-        parts = message.content.split()
-        if len(parts) < 2:
-            return
-
-        room = parts[1]
-        if len(parts) < 3:
-            result, events = raumcheck.get_availability(room)
+        if "find" in message.content:
+            rooms = raumcheck.find_rooms(message.content.split()[2])
+            embed = discord.Embed(description="Räume in der Nähe:\n- {}".format("\n- ".join(rooms)))
         else:
-            result, events = raumcheck.get_availability(room, date=parts[2])
-        
-        embed = discord.Embed(description=result)
-        if events is not None:
-            for event in events:
-                embed.add_field(name="{} bis {}".format(event["start"], event["end"]), value=event["name"], inline=False)
-        
+            parts = message.content.split()
+            if len(parts) < 2:
+                return
+
+            room = parts[1]
+            if len(parts) < 3:
+                result, events = raumcheck.get_availability(room)
+            else:
+                result, events = raumcheck.get_availability(room, date=parts[2])
+            
+            embed = discord.Embed(description=result)
+            if events is not None:
+                for event in events:
+                    embed.add_field(name="{} bis {}".format(event["start"], event["end"]), value=event["name"], inline=False)
+
         if ENVIRONMENT == "PRODUCTION":
             embed.set_footer(text="Angaben ohne Gewähr.")
         else:

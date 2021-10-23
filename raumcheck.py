@@ -85,3 +85,21 @@ def get_availability(room, date=None):
         return "Der Raum **{}** ist {} zu folgenden Uhrzeiten belegt:".format(room, date_display), rooms.get(room).get(date)
     else:
         return "Der Raum **{}** ist {} nicht belegt.".format(room, date_display), None
+
+def find_rooms(s, date=None):
+    rooms = get_rooms()
+    distances = list(map(lambda x: dist(x, s), rooms.keys()))
+    sorted_rooms = [x for _, x in sorted(zip(distances, rooms.keys()))]
+    return sorted_rooms[:10]
+
+
+
+def dist(x, y):
+    def single_dist(x, y):
+        try:
+            return math.abs(int(x) - int(y))
+        except:
+            return 0 if x==y else 1
+        
+    m = min(len(x), len(y))
+    return sum(single_dist(a,b)*(m-i) for i,(a,b) in enumerate(zip(x,y)))
