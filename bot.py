@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+ENVIRONMENT = os.getenv('ENVIRONMENT')
 
 client = discord.Client()
 
@@ -34,7 +35,11 @@ async def on_message(message):
             for event in events:
                 embed.add_field(name="{} bis {}".format(event["start"], event["end"]), value=event["name"], inline=False)
         
-        embed.set_footer(text="Angaben ohne Gewähr")
+        if ENVIRONMENT == "PRODUCTION":
+            embed.set_footer(text="Angaben ohne Gewähr.")
+        else:
+            embed.set_footer(text="Development build.")
+
         await message.channel.send(embed=embed)
 
 client.run(TOKEN)
