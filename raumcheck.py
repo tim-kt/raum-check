@@ -1,14 +1,24 @@
-import sys
+import math
 import os.path
-import argparse
 import urllib.request
 import fitz
-from datetime import datetime
+import json
+import time
 
 WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
 def get_rooms():
-    """Downloads the Raumplan.pdf and parses it into a neatly organized dictionary."""
+    """
+    Downloads the Raumplan.pdf and parses it into a neatly organized dictionary.
+    
+    If there is a raumplan.json file which was last modified during the last 24 hours,
+    the data from there will be used. Otherwise, it will be created or overwritten.
+    """
+    if (os.path.isfile("raumplan.json")):
+        if time.time() - os.path.getmtime("raumplan.json") < 24*60*60:
+            with open("raumplan.json") as f:
+                return json.load(f)
+
     if (os.path.isfile("Raumplan.pdf")):
         os.remove("Raumplan.pdf")
 
@@ -42,6 +52,7 @@ def get_rooms():
                 if date not in events:
                     events[date] = []
 
+                # TODO this should be a class with helper methods (e.g. is_free())
                 events[date].append({
                     "name": name,
                     "start": start,
@@ -49,50 +60,38 @@ def get_rooms():
                 })
         
         rooms[room] = events
+    
+    with open("raumplan.json", "w+") as f:
+        json.dump(rooms, f)
 
     return rooms
 
-def get_availability(room, date=None):
+def get_availability(room, date):
+    """
+    Returns the availablity of the given room on the given date.
+    
+    The result is an array of events, which all have the properties
+    - name (course ID and, optionally, a name)
+    - start (when the event starts)
+    - end (when the event ends)
+    """
     room = room.upper()
-    if date is None:
-        date_display = "heute"
-        date = datetime.today().strftime('%d.%m.%Y')
-        # DD.MM.YYYY -> DD.MM.YY
-        date = date[:-4] + date[-2:]
-    else:
-        parts = date.split(".")
-        if len(parts) != 3:
-            return "Ungültiges Datum angegeben. Bitte nutze das Format DD.MM.YY", None
-
-        day, month, year = parts
-        if len(day) == 1:
-            day = "0" + day
-        if len(month) == 1:
-            month = "0" + month
-        if len(year) == 4:
-            year = year[2:]
-
-        date = "{}.{}.{}".format(day, month, year)
-        date_display = "am {}".format(date)
-
     # TODO cache?
     rooms = get_rooms()
     if room not in rooms.keys():
-        return "Der Raum **{}** konnte nicht im Raumplan gefunden werden.".format(room), None
+        return None
 
     if date in rooms.get(room).keys():
-        print(rooms.get(room).get(date))
-        return "Der Raum **{}** ist {} zu folgenden Uhrzeiten belegt:".format(room, date_display), rooms.get(room).get(date)
+        return rooms.get(room).get(date)
     else:
-        return "Der Raum **{}** ist {} nicht belegt.".format(room, date_display), None
+        return []
 
-def find_rooms(s, date=None):
+def get_sorted_rooms(s):
+    """Returns a a list of room names, sorted by levenshtein distance to the given string s."""
     rooms = get_rooms()
     distances = list(map(lambda x: dist(x, s), rooms.keys()))
     sorted_rooms = [x for _, x in sorted(zip(distances, rooms.keys()))]
-    return sorted_rooms[:10]
-
-
+    return sorted_rooms
 
 def dist(x, y):
     def single_dist(x, y):
