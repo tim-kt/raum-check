@@ -3,14 +3,14 @@ import raumcheck
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from datetime import datetime
+import datetime
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-DISCORD_TAG = os.getenv("DISCORD_TAG")
 ENVIRONMENT = os.getenv("ENVIRONMENT")
+COMMAND = os.getenv("COMMAND")
 
-bot = commands.Bot(command_prefix=DISCORD_TAG + " ")
+bot = commands.Bot(command_prefix=COMMAND + " ")
 
 @bot.event
 async def on_ready():
@@ -22,16 +22,14 @@ async def on_command_error(ctx, error):
 
 @bot.command()
 async def find(ctx, query, date_str=None):
-    """Finds free rooms near the given query string (based on levenshtein distance)."""
+    """Finds free rooms near the given query string (levenshtein)."""
     print("{}: {}".format(ctx.message.author, ctx.message.content))
     query = query.upper()
     async with ctx.typing():
-        date = get_date(date_str)
-        if date is None:
-            # TODO better error handling
-            # TODO duplicate code (find)
-            await ctx.send(embed=discord.Embed(description="Ungültiges Datum angegeben. Bitte nutze das Format DD.MM.YY"))
-            return
+        try:
+            date = get_date(date_str)
+        except ValueError as e:
+            await ctx.send(embed=discord.Embed(description=e.args[0]))
 
         date_display = "heute" if date_str is None else "am {}".format(date)        
 
@@ -47,7 +45,7 @@ async def find(ctx, query, date_str=None):
     if len(free_rooms) == 0:
         description = "Ich konnte keine freien Räume finden :("
     else:
-        description = "Ich habe folgende Räume in deiner Nähe gefunden, die {} nicht belegt sind:\n- **{}**".format(date_display, "**\n- **".join(free_rooms.keys()))
+        description = "Ich habe folgende Räume gefunden, die {} nicht belegt sind:\n- **{}**".format(date_display, "**\n- **".join(free_rooms.keys()))
         
     embed = discord.Embed(description=description)
     embed.set_footer(text="Angaben ohne Gewähr." if ENVIRONMENT == "PRODUCTION" else "Development build.")
@@ -55,15 +53,13 @@ async def find(ctx, query, date_str=None):
 
 @bot.command()
 async def check(ctx, room, date_str=None):
-    """Checks the given room for availability (today or on the given date)."""
+    """Checks the given room for availability."""
     print("{}: {}".format(ctx.message.author, ctx.message.content))
     room = room.upper()
-    date = get_date(date_str)
-    if date is None:
-        # TODO better error handling
-        # TODO duplicate code (find)
-        await ctx.send(embed=discord.Embed(description="Ungültiges Datum angegeben. Bitte nutze das Format DD.MM.YY"))
-        return
+    try:
+        date = get_date(date_str)
+    except ValueError as e:
+        await ctx.send(embed=discord.Embed(description=e.args[0]))
 
     date_display = "heute" if date_str is None else "am {}".format(date)
 
@@ -82,32 +78,56 @@ async def check(ctx, room, date_str=None):
     embed.set_footer(text="Angaben ohne Gewähr." if ENVIRONMENT == "PRODUCTION" else "Development build.")
     await ctx.send(embed=embed)
 
+WEEKDAYS = {
+    "mo": 0,
+    "montag": 0,
+    "di": 1,
+    "dienstag": 1,
+    "mi": 2,
+    "mittwoch": 2,
+    "do": 3,
+    "donnerstag": 3,
+    "fr": 4,
+    "freitag": 4,
+    "sa": 5,
+    "samstag": 5,
+    "so": 6,
+    "sonntag": 6,
+}
+
 def get_date(date_str):
     """
     Returns one of the following:
-    - today's date if the given date is None (format: DD.MM.YY)
-    - the given date, but adjusted to fit the format DD.MM.YY (D -> 0D, M -> 0M, YYYY -> YY)
-
-    If the given date does not have three parts separated with a dot, None is returned. 
+    - today's date if the given string is None or 'heute'
+    - tomorrow's date if the given string is 'morgen'
+    - the date of given weekday if the string date is in the keys of WEEKDAYS
+    - the given date, adjusted to fit the format
+    
+    The format will always be DD.MM.YY. TODO docstring
     """
-    if date_str is None:
-        date = datetime.today().strftime('%d.%m.%Y')
-        # Convert from DD.MM.YYYY to DD.MM.YY
-        date = date[:-4] + date[-2:]
+    if date_str is not None:
+        date_str = date_str.lower()
+    
+    if date_str is None or date_str == "heute":
+        date = datetime.date.today().strftime('%d.%m.%Y')
+    elif date_str == "morgen":
+        date = (datetime.date.today() + datetime.timedelta(days=1)).strftime('%d.%m.%Y')
+    elif date_str in WEEKDAYS.keys():
+        today = datetime.date.today()
+        days_ahead = (WEEKDAYS[date_str] - today.weekday()) % 7
+        date = (today + datetime.timedelta(days=days_ahead)).strftime('%d.%m.%Y')
     else:
-        parts = date_str.split(".")
-        if len(parts) != 3:
-            return None
+        try:
+            datetime.datetime.strptime(date_str, '%d.%m.%Y')
+        except ValueError:
+            raise ValueError("Bitte gib ein gültiges Datum im Format DD.MM.YYYY an (oder heute, morgen oder ein Wochentag).")
+        
+        date = date_str
 
-        day, month, year = parts
-        if len(day) == 1:
-            day = "0" + day
-        if len(month) == 1:
-            month = "0" + month
-        if len(year) == 4:
-            year = year[2:]
 
-        date = "{}.{}.{}".format(day, month, year)
+    # Convert from DD.MM.YYYY to DD.MM.YY (results of strftime())
+    if len(date) == 10:
+        date = date[:-4] + date[-2:]
 
     return date
 

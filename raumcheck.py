@@ -11,11 +11,11 @@ def get_rooms():
     """
     Downloads the Raumplan.pdf and parses it into a neatly organized dictionary.
     
-    If there is a raumplan.json file which was last modified during the last 24 hours,
+    If there is a raumplan.json file which was last modified during the last hour,
     the data from there will be used. Otherwise, it will be created or overwritten.
     """
     if (os.path.isfile("raumplan.json")):
-        if time.time() - os.path.getmtime("raumplan.json") < 24*60*60:
+        if time.time() - os.path.getmtime("raumplan.json") < 60*60:
             with open("raumplan.json") as f:
                 return json.load(f)
 
@@ -75,8 +75,6 @@ def get_availability(room, date):
     - start (when the event starts)
     - end (when the event ends)
     """
-    room = room.upper()
-    # TODO cache?
     rooms = get_rooms()
     if room not in rooms.keys():
         return None
