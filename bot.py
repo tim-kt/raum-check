@@ -30,6 +30,7 @@ async def find(ctx, query, date_str=None):
             date = get_date(date_str)
         except ValueError as e:
             await ctx.send(embed=discord.Embed(description=e.args[0]))
+            return
 
         date_display = "heute" if date_str is None else "am {}".format(date)        
 
@@ -60,6 +61,7 @@ async def check(ctx, room, date_str=None):
         date = get_date(date_str)
     except ValueError as e:
         await ctx.send(embed=discord.Embed(description=e.args[0]))
+        return
 
     date_display = "heute" if date_str is None else "am {}".format(date)
 
@@ -121,9 +123,8 @@ def get_date(date_str):
             datetime.datetime.strptime(date_str, '%d.%m.%Y')
         except ValueError:
             raise ValueError("Bitte gib ein gültiges Datum im Format DD.MM.YYYY an (oder heute, morgen oder ein Wochentag).")
-        
-        date = date_str
 
+        date = date_str
 
     # Convert from DD.MM.YYYY to DD.MM.YY (results of strftime())
     if len(date) == 10:
