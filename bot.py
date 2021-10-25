@@ -27,6 +27,14 @@ async def find(ctx, query, date_str=None):
     query = query.upper()
     async with ctx.typing():
         date = get_date(date_str)
+        if date is None:
+            # TODO better error handling
+            # TODO duplicate code (find)
+            await ctx.send(embed=discord.Embed(description="Ungültiges Datum angegeben. Bitte nutze das Format DD.MM.YY"))
+            return
+
+        date_display = "heute" if date_str is None else "am {}".format(date)        
+
         rooms = raumcheck.get_sorted_rooms(query)
         free_rooms = {}
         for room in rooms:
@@ -39,7 +47,7 @@ async def find(ctx, query, date_str=None):
     if len(free_rooms) == 0:
         description = "Ich konnte keine freien Räume finden :("
     else:
-        description = "Ich habe folgende Räume in deiner Nähe gefunden, die heute nicht belegt sind:\n- **{}**".format("**\n- **".join(free_rooms.keys()))
+        description = "Ich habe folgende Räume in deiner Nähe gefunden, die {} nicht belegt sind:\n- **{}**".format(date_display, "**\n- **".join(free_rooms.keys()))
         
     embed = discord.Embed(description=description)
     embed.set_footer(text="Angaben ohne Gewähr." if ENVIRONMENT == "PRODUCTION" else "Development build.")
@@ -53,6 +61,7 @@ async def check(ctx, room, date_str=None):
     date = get_date(date_str)
     if date is None:
         # TODO better error handling
+        # TODO duplicate code (find)
         await ctx.send(embed=discord.Embed(description="Ungültiges Datum angegeben. Bitte nutze das Format DD.MM.YY"))
         return
 
