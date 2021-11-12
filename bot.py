@@ -8,9 +8,8 @@ import datetime
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 ENVIRONMENT = os.getenv("ENVIRONMENT")
-COMMAND = os.getenv("COMMAND")
 
-bot = commands.Bot(command_prefix=COMMAND + " ")
+bot = commands.Bot(("raum ", "Raum "))
 
 @bot.event
 async def on_ready():
