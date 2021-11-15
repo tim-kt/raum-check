@@ -14,6 +14,7 @@ def get_rooms():
     If there is a raumplan.json file which was last modified during the last hour,
     the data from there will be used. Otherwise, it will be created or overwritten.
     """
+    # TODO Check if there are any entries for today (if not, the PDF is not up to date)
     if (os.path.isfile("raumplan.json")):
         if time.time() - os.path.getmtime("raumplan.json") < 60*60:
             with open("raumplan.json") as f:

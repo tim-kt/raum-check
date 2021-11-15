@@ -7,7 +7,7 @@ import datetime
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-ENVIRONMENT = os.getenv("ENVIRONMENT")
+FOOTER = os.getenv("FOOTER")
 
 bot = commands.Bot(("raum ", "Raum "))
 
@@ -48,7 +48,7 @@ async def find(ctx, query, date_str=None):
         description = "Ich habe folgende Räume gefunden, die {} nicht belegt sind:\n- **{}**".format(date_display, "**\n- **".join(free_rooms.keys()))
         
     embed = discord.Embed(description=description)
-    embed.set_footer(text="Angaben ohne Gewähr." if ENVIRONMENT == "PRODUCTION" else "Development build.")
+    embed.set_footer(text=FOOTER)
     await ctx.send(embed=embed)
 
 @bot.command()
@@ -76,7 +76,7 @@ async def check(ctx, room, date_str=None):
             for event in events:
                 embed.add_field(name="{} bis {}".format(event["start"], event["end"]), value=event["name"], inline=False)
 
-    embed.set_footer(text="Angaben ohne Gewähr." if ENVIRONMENT == "PRODUCTION" else "Development build.")
+    embed.set_footer(text=FOOTER)
     await ctx.send(embed=embed)
 
 WEEKDAYS = {
